@@ -20,8 +20,7 @@ use Orchid\Screen\Fields\Hidden;
 use App\Models\User;
 
 use App\Models\Purchase;
-
-use Carbon\Carbon; // Import Carbon class
+use Carbon\Carbon;
 
 // cat storage/logs/laravel.log
 
@@ -119,17 +118,13 @@ class TaskScreen extends Screen
             ->title('Restock item')
             ->applyButton('Add Funds'), 
             Layout::table('tasks', [
-                TD::make('name'),
-                TD::make('cost'),
-                TD::make('cnt'),
-                TD::make('descr'),
-                TD::make('Actions')
-                    ->alignRight()
-                    ->render(function (Task $task) {
-                        return Button::make('Buy')
-                            ->confirm('Do you want to buy this item?')
-                            ->method('buy', ['task' => $task->id]);
-                    }),
+                TD::make('name', 'Name'),
+                TD::make('cost', 'Cost'),
+                TD::make('cnt', 'Count'),
+                TD::make('descr', 'Description'),
+                TD::make('Actions')->alignRight()->render(function (Task $task) {
+                    return Button::make('Buy')->confirm('Do you want to buy this item?')->method('buy', ['task' => $task->id]);
+                }),
                 TD::make('Admin Actions')
                     ->alignRight()
                     ->render(function (Task $task) {
@@ -143,14 +138,14 @@ class TaskScreen extends Screen
                         }
                         return '';
                     }),
-            ]), 
+            ]),  
             Layout::table('purchases', [
                 TD::make('item_id', 'Item Name')
                     ->render(function (Purchase $purchase) {
                         return $purchase->task ? $purchase->task->name : 'N/A';
                     }),
                 TD::make('quantity'),
-                TD::make('amount'),
+                TD::make('amount', 'Cost'),
                 TD::make('created_at', 'Date')
                     ->render(function (Purchase $purchase) {
                         return Carbon::parse($purchase->created_at)->format('Y-m-d H:i:s');
