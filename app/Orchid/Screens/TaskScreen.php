@@ -139,17 +139,14 @@ class TaskScreen extends Screen
                         return '';
                     }),
             ]),  
-            Layout::table('purchases', [
+            Layout::table('purchases', [ 
                 TD::make('item_id', 'Item Name')
                     ->render(function (Purchase $purchase) {
                         return $purchase->task ? $purchase->task->name : 'N/A';
                     }),
                 TD::make('quantity'),
                 TD::make('amount', 'Cost'),
-                TD::make('created_at', 'Date')
-                    ->render(function (Purchase $purchase) {
-                        return Carbon::parse($purchase->created_at)->format('Y-m-d H:i:s');
-                    }),
+                TD::make('date', 'Date') 
             ]),
             Layout::modal('taskModal', Layout::rows([
                 Input::make('task.name')
