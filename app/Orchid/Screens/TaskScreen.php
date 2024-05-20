@@ -19,6 +19,10 @@ use Orchid\Screen\Fields\Hidden;
  
 use App\Models\User;
 
+use App\Models\Purchase;
+
+use Carbon\Carbon; // Import Carbon class
+
 // cat storage/logs/laravel.log
 
 class TaskScreen extends Screen
@@ -30,19 +34,45 @@ class TaskScreen extends Screen
      */
 
     
+    //  public function query(): iterable
+    //  {
+    //      $user = Auth::user();
+    //      $money = $user ? $user->money : 0.00;
+     
+    //      // Retrieve tasks
+    //      $tasks = Task::latest()->get();
+     
+    //      // Retrieve all purchase history records
+    //      $purchaseHistory = PurchaseHistory::latest()->get();
+     
+    //      // Debugging: Display purchase history
+    //     //  dd($purchaseHistory);
+     
+    //      return [
+    //          'tasks' => $tasks,
+    //          'purchaseHistory' => $purchaseHistory,
+    //          'money' => $money,
+    //      ];
+    //  }
      public function query(): iterable
-     {
-         $user = Auth::user();
-         $money = $user ? $user->money : 0.00;
-     
-         // Retrieve purchase history for the current user
-         $purchaseHistory = $user ? $user->purchaseHistory : [];
-     
-         return [
-            'tasks' => Task::latest()->get(), 
-            'money' => $money, 
-         ];
-     }
+    {
+        $user = Auth::user();
+        $money = $user ? $user->money : 0.00;
+
+        // Retrieve tasks
+        $tasks = Task::latest()->get();
+
+        // Retrieve purchase history for the current user
+        $purchases = Purchase::where('user_id', $user->id)->latest()->get();
+ 
+
+        return [
+            'tasks' => $tasks,
+            'purchases' => $purchases,
+            'money' => $money,
+        ];
+    }
+
      
     
 
@@ -68,8 +98,8 @@ class TaskScreen extends Screen
      * @return \Orchid\Screen\Layout[]|string[]
      */
     public function layout(): iterable
-    {
-        return [  
+    { 
+        return [ 
             Layout::rows([
                 Input::make('money')
                     ->title('Current Money')
@@ -87,8 +117,7 @@ class TaskScreen extends Screen
                     ->step('0.01') 
             ]))
             ->title('Restock item')
-            ->applyButton('Add Funds'),
-
+            ->applyButton('Add Funds'), 
             Layout::table('tasks', [
                 TD::make('name'),
                 TD::make('cost'),
@@ -113,6 +142,18 @@ class TaskScreen extends Screen
                                 ->method('restock', ['task' => $task->id]);              
                         }
                         return '';
+                    }),
+            ]), 
+            Layout::table('purchases', [
+                TD::make('item_id', 'Item Name')
+                    ->render(function (Purchase $purchase) {
+                        return $purchase->task ? $purchase->task->name : 'N/A';
+                    }),
+                TD::make('quantity'),
+                TD::make('amount'),
+                TD::make('created_at', 'Date')
+                    ->render(function (Purchase $purchase) {
+                        return Carbon::parse($purchase->created_at)->format('Y-m-d H:i:s');
                     }),
             ]),
             Layout::modal('taskModal', Layout::rows([
@@ -147,22 +188,14 @@ class TaskScreen extends Screen
                     ->help('The amount of items to add to stock.'),
             ]))
             ->title('Restock item')
-            ->applyButton('Restock item'),
+            ->applyButton('Restock item') 
             
-            Layout::table('purchase_history', [
-                TD::make('name'),
-            ]),
-
-
-            // Layout::table('purchase_history', [
-            //     TD::make('user_id'),
-            //     TD::make('item_id'),
-            //     TD::make('quantity'),
-            //     TD::make('amount'), 
-            //     TD::make('created_at')
-            // ]), 
         ];
     } 
+    
+    
+    
+    
     public function addFunds(Request $request)
     {
         $user = Auth::user();
