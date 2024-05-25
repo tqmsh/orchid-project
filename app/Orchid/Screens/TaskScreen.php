@@ -10,19 +10,10 @@ use App\Models\Task;
 use Illuminate\Http\Request;
 use Orchid\Screen\TD;
 use Orchid\Screen\Actions\Button;
-use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Auth;
- 
-use Illuminate\Support\Facades\Log;
-
-use Orchid\Screen\Fields\Hidden;
- 
 use App\Models\User;
-
 use App\Models\Purchase;
 use Carbon\Carbon;
-
-// cat storage/logs/laravel.log
 
 class TaskScreen extends Screen
 {
@@ -31,39 +22,14 @@ class TaskScreen extends Screen
      *
      * @return array
      */
-
-    
-    //  public function query(): iterable
-    //  {
-    //      $user = Auth::user();
-    //      $money = $user ? $user->money : 0.00;
-     
-    //      // Retrieve tasks
-    //      $tasks = Task::latest()->get();
-     
-    //      // Retrieve all purchase history records
-    //      $purchaseHistory = PurchaseHistory::latest()->get();
-     
-    //      // Debugging: Display purchase history
-    //     //  dd($purchaseHistory);
-     
-    //      return [
-    //          'tasks' => $tasks,
-    //          'purchaseHistory' => $purchaseHistory,
-    //          'money' => $money,
-    //      ];
-    //  }
-     public function query(): iterable
+    public function query(): iterable
     {
         $user = Auth::user();
         $money = $user ? $user->money : 0.00;
 
-        // Retrieve tasks
         $tasks = Task::latest()->get();
 
-        // Retrieve purchase history for the current user
         $purchases = Purchase::where('user_id', $user->id)->latest()->get();
- 
 
         return [
             'tasks' => $tasks,
@@ -71,9 +37,6 @@ class TaskScreen extends Screen
             'money' => $money,
         ];
     }
-
-     
-    
 
     /**
      * The name is displayed on the user's screen and in the headers
@@ -105,17 +68,15 @@ class TaskScreen extends Screen
                     ->value($this->query()['money'])  
                     ->readonly()
                     ->help('Your current money balance.'),
-            ])
-            , 
+            ]),
             Layout::modal('addFundsModal', Layout::rows([ 
-                
                 Input::make('amount')
                     ->title('Amount')
                     ->placeholder('Enter the amounts of money to add to your account')
                     ->type('number')
                     ->step('0.01') 
             ]))
-            ->title('Restock item')
+            ->title('Add Funds')
             ->applyButton('Add Funds'), 
             Layout::table('tasks', [
                 TD::make('name', 'Name'),
@@ -123,7 +84,9 @@ class TaskScreen extends Screen
                 TD::make('cnt', 'Count'),
                 TD::make('descr', 'Description'),
                 TD::make('Actions')->alignRight()->render(function (Task $task) {
-                    return Button::make('Buy')->confirm('Do you want to buy this item?')->method('buy', ['task' => $task->id]);
+                    return ModalToggle::make('Buy Item')
+                    ->modal('buyModal')
+                    ->method('buy', ['task' => $task->id]);       
                 }),
                 TD::make('Admin Actions')
                     ->alignRight()
@@ -180,14 +143,28 @@ class TaskScreen extends Screen
                     ->help('The amount of items to add to stock.'),
             ]))
             ->title('Restock item')
-            ->applyButton('Restock item') 
+            ->applyButton('Restock item'), 
+
+            Layout::modal('buyModal', Layout::rows([ 
+                Input::make('cnt')
+                    ->title('Buy Count')
+                    ->placeholder('Enter item count to buy')
+                    ->type('number')
+                    ->help('The amount of items to buy.'),
+            ]))
+            ->title('Buy item')
+            ->applyButton('Buy item')
             
         ];
     } 
-    
-    
-    
-    
+
+    /**
+     * Add funds to user's account.
+     *
+     * @param \Illuminate\Http\Request $request
+     *
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function addFunds(Request $request)
     {
         $user = Auth::user();
@@ -195,55 +172,64 @@ class TaskScreen extends Screen
         $user->save();
         return redirect()->back()->with('success', 'Funds added successfully!');
     }
+
+    /**
+     * Update user's profile information.
+     *
+     * @param \Illuminate\Http\Request $request
+     *
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function updateProfile(Request $request){
         $user = Auth::user();
         $user->update($request->input('user'));
         return redirect()->back()->with('success', 'Profile updated successfully!');
     }
 
+    /**
+     * Restock items in the inventory.
+     *
+     * @param \Illuminate\Http\Request $request
+     *
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function restock(Request $request)
-    {
-        // $request->validate([
-        //     'task_id' => 'required|exists:tasks,id', // Validate task ID exists
-        //     'cnt' => 'required|integer', // Validate count
-        // ]);
-    
-        // Retrieve the task by ID
-
-        
+    { 
         $task = Task::find($request->input('task'));  
         $restockCount = $request->input('cnt');
         if ($task) {
             $task->cnt += $restockCount;
             $task->save(); 
 
-            return redirect()->route('platform.task')->with('success', 'Purchase successful!');
+            return redirect()->route('platform.task')->with('success', 'Restock successful!');
         }
 
-        return redirect()->route('platform.task')->with('error', 'Purchase failed. Check stock or balance.');
+        return redirect()->route('platform.task')->with('error', 'Restock failed. Item not found.');
     } 
-    
+
     /**
      * The screen's action buttons.
      *
      * @return \Orchid\Screen\Action[]
      */
     public function commandBar(): iterable
-{
-    return [
-        ModalToggle::make('Add Item')
-            ->modal('taskModal')
-            ->method('create')
-            ->icon('plus'),
-            
-        ModalToggle::make('Add Funds')
-            ->modal('addFundsModal')
-            ->method('addFunds')
-            ->icon('plus'),
-    ];
-}
+    {
+        return [
+            ModalToggle::make('Add Item')
+                ->modal('taskModal')
+                ->method('create')
+                ->icon('plus'),
+                
+            ModalToggle::make('Add Funds')
+                ->modal('addFundsModal')
+                ->method('addFunds')
+                -> icon('plus'),
+        ];
+    }
 
     /**
+     * Create a new item in the inventory.
+     *
      * @param \Illuminate\Http\Request $request
      *
      * @return void
@@ -266,6 +252,8 @@ class TaskScreen extends Screen
     }
 
     /**
+     * Delete an item from the inventory.
+     *
      * @param Task $task
      *
      * @return void
@@ -276,23 +264,43 @@ class TaskScreen extends Screen
     }
 
     /**
-     * Method to handle item purchase.
+     * Handle item purchase.
      *
      * @param \Illuminate\Http\Request $request
      *
      * @return \Illuminate\Http\RedirectResponse
      */
     public function buy(Request $request)
-    {
+    { 
         $task = Task::find($request->input('task'));
         $user = Auth::user();
         
-        if ($task && $task->cnt > 0 && $user && $user->money >= $task->cost) {
-            $task->cnt -= 1;
+        if ($task && $user) {
+            $purchaseQuantity = $request->input('cnt'); 
+            
+            if ($purchaseQuantity <= 0 || $purchaseQuantity > $task->cnt) {
+                return redirect()->route('platform.task')->with('error', 'Invalid quantity.');
+            }
+            
+            $totalCost = $task->cost * $purchaseQuantity;
+
+            if ($user->money < $totalCost) {
+                return redirect()->route('platform.task')->with('error', 'Insufficient funds.');
+            }
+
+            $task->cnt -= $purchaseQuantity;
             $task->save();
 
-            $user->money -= $task->cost; // Deduct the cost from user's money
-            $user->save(); // Save the updated user's money
+            $user->money -= $totalCost;
+            $user->save();
+
+            $purchase = new Purchase();
+            $purchase->user_id = $user->id;
+            $purchase->item_id = $task->id;
+            $purchase->quantity = $purchaseQuantity;
+            $purchase->amount = $totalCost;
+            $purchase->date = Carbon::now();
+            $purchase->save();
 
             return redirect()->route('platform.task')->with('success', 'Purchase successful!');
         }
@@ -308,11 +316,11 @@ class TaskScreen extends Screen
     protected function isAdmin(): bool
     {
         $user = Auth::user();
-        return $user && $user->is_admin; // Adjust based on your admin check logic
+        return $user && $user->is_admin;
     }
 
     /**
-     * Method to asynchronously get task data.
+     * Asynchronously get task data.
      *
      * @param Task $task
      *
@@ -324,5 +332,4 @@ class TaskScreen extends Screen
             'task.cnt' => $task->cnt,
         ];
     }
-
 }
