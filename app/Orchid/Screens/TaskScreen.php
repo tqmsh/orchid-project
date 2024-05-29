@@ -26,20 +26,23 @@ class TaskScreen extends Screen
     {
         $user = Auth::user();
         $money = $user ? $user->money : 0.00;
-
+    
         $tasks = Task::latest()->get();
-
-        $purchases = Purchase::where('user_id', $user->id)->latest()->get();
-
+    
+        $purchases = $user && $user->is_admin ? 
+            Purchase::latest()->get() : 
+            Purchase::where('user_id', $user->id)->latest()->get();
+    
         return [
             'tasks' => $tasks,
             'purchases' => $purchases,
             'money' => $money,
         ];
     }
+    
 
     /**
-     * The name is displayed on the user's screen and in the headers
+     * The name is displayed on the user's screen and in the headers.
      */
     public function name(): ?string
     {
@@ -47,7 +50,7 @@ class TaskScreen extends Screen
     }
 
     /**
-     * The description is displayed on the user's screen under the heading
+     * The description is displayed on the user's screen under the heading.
      */
     public function description(): ?string
     {
@@ -61,6 +64,31 @@ class TaskScreen extends Screen
      */
     public function layout(): iterable
     { 
+        $taskTableColumns = [
+            TD::make('name', 'Name'),
+            TD::make('cost', 'Cost'),
+            TD::make('cnt', 'Count'),
+            TD::make('descr', 'Description'),
+            TD::make('Actions')->alignRight()->render(function (Task $task) {
+                return ModalToggle::make('Buy Item')
+                    ->modal('buyModal')
+                    ->method('buy', ['task' => $task->id]);       
+            }),
+        ];
+
+        if ($this->isAdmin()) {
+            $taskTableColumns[] = TD::make('Admin Actions')
+                ->alignRight()
+                ->render(function (Task $task) {
+                    return Button::make('Delete Item')
+                            ->confirm('After deleting, the task will be gone forever.')
+                            ->method('delete', ['task' => $task->id])
+                        . ModalToggle::make('Restock Item')
+                        ->modal('restockModal')
+                        ->method('restock', ['task' => $task->id]);              
+                });
+        }
+
         return [ 
             Layout::rows([
                 Input::make('money')
@@ -78,30 +106,7 @@ class TaskScreen extends Screen
             ]))
             ->title('Add Funds')
             ->applyButton('Add Funds'), 
-            Layout::table('tasks', [
-                TD::make('name', 'Name'),
-                TD::make('cost', 'Cost'),
-                TD::make('cnt', 'Count'),
-                TD::make('descr', 'Description'),
-                TD::make('Actions')->alignRight()->render(function (Task $task) {
-                    return ModalToggle::make('Buy Item')
-                    ->modal('buyModal')
-                    ->method('buy', ['task' => $task->id]);       
-                }),
-                TD::make('Admin Actions')
-                    ->alignRight()
-                    ->render(function (Task $task) {
-                        if ($this->isAdmin()) {
-                            return Button::make('Delete Item')
-                                    ->confirm('After deleting, the task will be gone forever.')
-                                    ->method('delete', ['task' => $task->id])
-                                .  ModalToggle::make('Restock Item')
-                                ->modal('restockModal')
-                                ->method('restock', ['task' => $task->id]);              
-                        }
-                        return '';
-                    }),
-            ]),  
+            Layout::table('tasks', $taskTableColumns),  
             Layout::table('purchases', [ 
                 TD::make('item_id', 'Item Name')
                     ->render(function (Purchase $purchase) {
@@ -214,17 +219,21 @@ class TaskScreen extends Screen
      */
     public function commandBar(): iterable
     {
-        return [
-            ModalToggle::make('Add Item')
-                ->modal('taskModal')
-                ->method('create')
-                ->icon('plus'),
-                
+        $actions = [
             ModalToggle::make('Add Funds')
                 ->modal('addFundsModal')
                 ->method('addFunds')
-                -> icon('plus'),
+                ->icon('plus'),
         ];
+
+        if ($this->isAdmin()) {
+            $actions[] = ModalToggle::make('Add Item')
+                ->modal('taskModal')
+                ->method('create')
+                ->icon('plus');
+        }
+
+        return $actions;
     }
 
     /**
