@@ -114,8 +114,13 @@ class TaskScreen extends Screen
                     }),
                 TD::make('quantity'),
                 TD::make('amount', 'Cost'),
+                TD::make('user_id', 'User')
+                    ->render(function (Purchase $purchase) {
+                        return $purchase->user ? $purchase->user->name : 'N/A';
+                    }),
                 TD::make('date', 'Date') 
             ]),
+            
             Layout::modal('taskModal', Layout::rows([
                 Input::make('task.name')
                     ->title('Name')

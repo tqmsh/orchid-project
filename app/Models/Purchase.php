@@ -16,4 +16,8 @@ class Purchase extends Model
     {
         return $this->belongsTo(Task::class, 'item_id');
     }
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
 }
