@@ -33,10 +33,13 @@ class TaskScreen extends Screen
             Purchase::latest()->get() : 
             Purchase::where('user_id', $user->id)->latest()->get();
     
+        $totalSpent = $purchases->sum('amount');
+    
         return [
             'tasks' => $tasks,
             'purchases' => $purchases,
             'money' => $money,
+            'totalSpent' => $totalSpent,
         ];
     }
     
@@ -63,7 +66,7 @@ class TaskScreen extends Screen
      * @return \Orchid\Screen\Layout[]|string[]
      */
     public function layout(): iterable
-    { 
+    {
         $taskTableColumns = [
             TD::make('name', 'Name'),
             TD::make('cost', 'Cost'),
@@ -96,11 +99,16 @@ class TaskScreen extends Screen
                     ->value($this->query()['money'])  
                     ->readonly()
                     ->help('Your current money balance.'),
+                Input::make('totalSpent')
+                    ->title('Total Spent')
+                    ->value($this->query()['totalSpent'])  
+                    ->readonly()
+                    ->help('Total amount of money you have spent.'),
             ]),
             Layout::modal('addFundsModal', Layout::rows([ 
                 Input::make('amount')
                     ->title('Amount')
-                    ->placeholder('Enter the amounts of money to add to your account')
+                    ->placeholder('Enter the amount of money to add to your account')
                     ->type('number')
                     ->step('0.01') 
             ]))
@@ -166,7 +174,8 @@ class TaskScreen extends Screen
             ->applyButton('Buy item')
             
         ];
-    } 
+    }
+
 
     /**
      * Add funds to user's account.
