@@ -34,11 +34,15 @@ class PlatformProvider extends OrchidServiceProvider
     public function menu(): array
     {
         return [
-            // 教程 ADD NEW MENU ITEMS
-        
-            Menu::make('Vending Machine')
+            // 教程 ADD NEW MENU ITEMS 
+            Menu::make('Staff')
                 ->icon('bag')
                 ->route('platform.task')
+                ->title('Tools'),
+
+            Menu::make('Setting')
+                ->icon('bag')
+                ->route('platform.setting')
                 ->title('Tools')
         ];
         return [

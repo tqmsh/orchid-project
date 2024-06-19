@@ -32,15 +32,18 @@ use Illuminate\Support\Facades\Route;
 
 // 教程 route to screen & breadcrumbs
 use App\Orchid\Screens\TaskScreen;
+use App\Orchid\Screens\Setting; 
 use Tabuna\Breadcrumbs\Trail;
     
-Route::screen('vendingMachine', TaskScreen::class)
+Route::screen('Staff', TaskScreen::class)
     ->name('platform.task')
     ->breadcrumbs(function (Trail $trail){
         return $trail
             ->parent('platform.index')
-            ->push('Vending Machine');
+            ->push('Staff');
     });
+
+Route::screen('setting', Setting::class)->name('platform.setting');
 
 // Main
 Route::screen('/main', PlatformScreen::class)

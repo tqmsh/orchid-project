@@ -14,9 +14,22 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\User;
 use App\Models\Purchase;
 use Carbon\Carbon;
+use Orchid\Screen\Actions\Menu;
+use Orchid\Support\Facades\Dashboard;
+use Orchid\Screen\Actions\DropDown;
+use Orchid\Screen\Actions\Link;
 
 class TaskScreen extends Screen
 {
+    public function search(Request $request)
+    {
+        $query = $request->input('searchQuery');
+        // Implement your search logic here
+
+        return redirect()->route('platform.task')->with('success', 'Search completed!');
+    }
+
+
     /**
      * Fetch data to be displayed on the screen.
      *
@@ -42,14 +55,13 @@ class TaskScreen extends Screen
             'totalSpent' => $totalSpent,
         ];
     }
-    
 
     /**
      * The name is displayed on the user's screen and in the headers.
      */
     public function name(): ?string
     {
-        return 'Vending Machine @ Prom Planner';
+        return 'Disc Jockey Manager';
     }
 
     /**
@@ -57,7 +69,7 @@ class TaskScreen extends Screen
      */
     public function description(): ?string
     {
-        return 'Manage vending machine items';
+        return 'Manage DJ';
     }
 
     /**
@@ -66,7 +78,7 @@ class TaskScreen extends Screen
      * @return \Orchid\Screen\Layout[]|string[]
      */
     public function layout(): iterable
-    {
+    { 
         $taskTableColumns = [
             TD::make('name', 'Name'),
             TD::make('cost', 'Cost'),
@@ -92,14 +104,27 @@ class TaskScreen extends Screen
                 });
         }
 
-        return [ 
+        return [  
+
+            
+            Layout::modal('searchModal', Layout::rows([ 
+                Input::make('searchQuery')
+                    ->title('Search')
+                    ->placeholder('Enter search query')
+                    ->type('text')
+                    ->help('Enter the item or purchase details you are searching for.'),
+            ]))
+            ->title('Search')
+            ->applyButton('Search'),
+
+            
             Layout::rows([
                 Input::make('money')
                     ->title('Current Money')
                     ->value($this->query()['money'])  
                     ->readonly()
                     ->help('Your current money balance.'),
-                Input::make('totalSpent')
+                Input::make(' ')
                     ->title('Total Spent')
                     ->value($this->query()['totalSpent'])  
                     ->readonly()
@@ -171,11 +196,11 @@ class TaskScreen extends Screen
                     ->help('The amount of items to buy.'),
             ]))
             ->title('Buy item')
-            ->applyButton('Buy item')
+            ->applyButton('Buy item'),
             
+             
         ];
     }
-
 
     /**
      * Add funds to user's account.
@@ -234,21 +259,52 @@ class TaskScreen extends Screen
     public function commandBar(): iterable
     {
         $actions = [
-            ModalToggle::make('Add Funds')
-                ->modal('addFundsModal')
-                ->method('addFunds')
-                ->icon('plus'),
+            Menu::make('Facebook')->url('https://www.facebook.com/yourpage')->icon('bs.facebook'),
+            Menu::make('Twitter')->url('https://twitter.com/yourpage')->icon('bs.twitter'),
+            Menu::make('Instagram')->url('https://www.instagram.com/yourpage')->icon('bs.instagram'),
+            ModalToggle::make('Search')
+                ->modal('searchModal')
+                ->icon('bs.search') // Set the icon for the search button
+                ->align('right'), // Align the search button to the right 
         ];
-
+     
+        $dropdown = DropDown::make()
+        ->icon('options-vertical')
+        ->list([
+            Link::make('Profile')->route('platform.profile'), // Assuming 'profile' is the route name for the profile page
+            Link::make('Setting')->route('platform.setting'),
+            // Uncommented options
+            // Link::make('Inbox')->route('inbox'),
+            // Link::make('Task')->route('task'),
+            // Link::make('Chat')->route('chat'),
+            // Link::make('Pricing')->route('pricing'),
+        ])
+        ->title($this->getUser()->name . ' (' . ($this->getUser()->is_admin ? 'Admin' : 'User') . ')') // Dynamic title directly using getUser()
+        ->align('right')
+        ->style('
+            background-color: #f0f0f0;
+            padding: 10px;
+            border: 1px solid #ccc;
+            cursor: pointer; /* Change cursor to pointer on hover */
+            display: inline-block; /* Ensure it behaves like a block element */
+            border-radius: 4px; /* Rounded corners */
+            transition: background-color 0.3s; /* Smooth background color transition */
+        ');
+     
+        // Check if user is an admin to add additional actions
         if ($this->isAdmin()) {
             $actions[] = ModalToggle::make('Add Item')
                 ->modal('taskModal')
                 ->method('create')
                 ->icon('plus');
         }
-
+    
+        $actions[] = $dropdown; // Add the styled dropdown to the actions
+    
         return $actions;
     }
+    
+    
 
     /**
      * Create a new item in the inventory.
@@ -285,6 +341,7 @@ class TaskScreen extends Screen
     {
         $task->delete();
     }
+
 
     /**
      * Handle item purchase.
@@ -341,7 +398,15 @@ class TaskScreen extends Screen
         $user = Auth::user();
         return $user && $user->is_admin;
     }
-
+    private function getUser()
+    {
+        $user = Auth::user(); 
+        return (object) [
+            'name' => $user->name,
+            'is_admin' => $user->is_admin,
+        ];
+    }
+    
     /**
      * Asynchronously get task data.
      *
